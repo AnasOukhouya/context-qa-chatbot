@@ -145,16 +145,7 @@ def main():
         4. **View answers** with confidence scores
         5. **Clear chat** to start fresh
         """)
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown('<div class="sidebar-content">', unsafe_allow_html=True)
-        st.markdown("### 🎯 Model Information")
-        st.markdown("""
-        **Model:** DistilBERT-SQuAD  
-        **Type:** Extractive QA  
-        **Language:** English  
-        **Context Limit:** 512 tokens
-        """)
+
         st.markdown('</div>', unsafe_allow_html=True)
         
         # Model loading
@@ -245,12 +236,6 @@ def main():
             
             # Clear the question input by rerunning
             st.rerun()
-    
-    # Display current context info
-    if st.session_state.context:
-        st.markdown("### 📄 Current Context Preview")
-        with st.expander("Click to view/hide context", expanded=False):
-            st.markdown(f'<div class="context-box">{st.session_state.context}</div>', unsafe_allow_html=True)
     
     # Display QA history
     if st.session_state.qa_history:
