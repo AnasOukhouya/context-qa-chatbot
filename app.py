@@ -22,7 +22,25 @@ st.markdown("""
         margin-bottom: 2rem;
     }
     
+    .fixed-input-container {
+        position: sticky;
+        top: 0;
+        background-color: white;
+        z-index: 100;
+        padding: 15px 0;
+        border-bottom: 2px solid #e9ecef;
+        margin-bottom: 20px;
+    }
+    
     .context-box {
+        background-color: #f8f9fa;
+        border: 2px solid #e9ecef;
+        border-radius: 10px;
+        padding: 15px;
+        margin: 10px 0;
+    }
+    
+    .question-input-box {
         background-color: #f8f9fa;
         border: 2px solid #e9ecef;
         border-radius: 10px;
@@ -90,6 +108,41 @@ st.markdown("""
         padding: 15px;
         border-radius: 10px;
         margin-bottom: 15px;
+    }
+    
+    .scrollable-history {
+        max-height: 70vh;
+        overflow-y: auto;
+        padding-right: 10px;
+    }
+    
+    .history-header {
+        position: sticky;
+        top: 0;
+        background-color: white;
+        z-index: 50;
+        padding: 10px 0;
+        border-bottom: 1px solid #e9ecef;
+        margin-bottom: 15px;
+    }
+    
+    /* Custom scrollbar for better UX */
+    .scrollable-history::-webkit-scrollbar {
+        width: 8px;
+    }
+    
+    .scrollable-history::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+    
+    .scrollable-history::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 10px;
+    }
+    
+    .scrollable-history::-webkit-scrollbar-thumb:hover {
+        background: #555;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -176,18 +229,24 @@ def main():
         st.info("👈 Please load the AI model from the sidebar to get started!")
         return
     
+    # Fixed input container
+    st.markdown('<div class="fixed-input-container">', unsafe_allow_html=True)
+    
     # Context input
     st.markdown("### 📝 Context")
     st.markdown("Enter or paste the text that contains the information you want to ask questions about:")
     
-    context_input = st.text_area(
-        "Context",
-        value=st.session_state.context,
-        height=150,
-        placeholder="Paste your context here... (e.g., a paragraph, article, or document excerpt)",
-        help="This is the text that the AI will search through to find answers to your questions.",
-        label_visibility="collapsed"
-    )
+    with st.container():
+        st.markdown('<div class="context-box">', unsafe_allow_html=True)
+        context_input = st.text_area(
+            "Context",
+            value=st.session_state.context,
+            height=120,
+            placeholder="Paste your context here... (e.g., a paragraph, article, or document excerpt)",
+            help="This is the text that the AI will search through to find answers to your questions.",
+            label_visibility="collapsed"
+        )
+        st.markdown('</div>', unsafe_allow_html=True)
     
     # Update context
     if context_input != st.session_state.context:
@@ -198,18 +257,25 @@ def main():
     # Question input
     st.markdown("### ❓ Ask a Question")
     
-    col1, col2 = st.columns([4, 1])
+    with st.container():
+        st.markdown('<div class="question-input-box">', unsafe_allow_html=True)
+        col1, col2 = st.columns([4, 1])
+        
+        with col1:
+            question = st.text_input(
+                "Question",
+                placeholder="What would you like to know about the context?",
+                help="Ask any question about the information in your context above.",
+                label_visibility="collapsed",
+                key="question_input"
+            )
+        
+        with col2:
+            ask_button = st.button("🚀 Ask", type="primary", use_container_width=True)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
     
-    with col1:
-        question = st.text_input(
-            "Question",
-            placeholder="What would you like to know about the context?",
-            help="Ask any question about the information in your context above.",
-            label_visibility="collapsed"
-        )
-    
-    with col2:
-        ask_button = st.button("🚀 Ask", type="primary", use_container_width=True)
+    st.markdown('</div>', unsafe_allow_html=True)  # Close fixed container
     
     # Process question
     if ask_button or (question and st.session_state.get('enter_pressed', False)):
@@ -237,17 +303,21 @@ def main():
             # Clear the question input by rerunning
             st.rerun()
     
-    # Display QA history
+    # Display QA history - oldest first (no reversal)
     if st.session_state.qa_history:
+        st.markdown('<div class="history-header">', unsafe_allow_html=True)
         st.markdown("### 💬 Question & Answer History")
+        st.markdown('</div>', unsafe_allow_html=True)
         
-        # Reverse to show latest first
-        for i, qa in enumerate(reversed(st.session_state.qa_history)):
+        st.markdown('<div class="scrollable-history">', unsafe_allow_html=True)
+        
+        # Show oldest first (normal order)
+        for i, qa in enumerate(st.session_state.qa_history):
             with st.container():
                 # Question
                 st.markdown(f"""
                 <div class="question-container">
-                    <strong>🙋 Question {len(st.session_state.qa_history) - i}:</strong> {qa['question']}
+                    <strong>🙋 Question {i + 1}:</strong> {qa['question']}
                     <div style="font-size: 0.8rem; color: #666; margin-top: 5px;">
                         ⏰ {qa['timestamp']}
                     </div>
@@ -276,6 +346,8 @@ def main():
                     st.warning("⚠️ Low confidence answer - the information might not be reliable or the answer might not be in the context.")
                 
                 st.markdown("---")
+        
+        st.markdown('</div>', unsafe_allow_html=True)  # Close scrollable history
     
     else:
         if st.session_state.context:
