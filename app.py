@@ -11,7 +11,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for better styling
+# Custom CSS for chat-like interface
 st.markdown("""
 <style>
     .main-header {
@@ -19,33 +19,53 @@ st.markdown("""
         font-weight: bold;
         text-align: center;
         color: #1f77b4;
-        margin-bottom: 2rem;
+        margin-bottom: 1rem;
     }
     
-    .fixed-input-container {
+    .chat-container {
+        display: flex;
+        flex-direction: column;
+        height: 80vh;
+        max-height: 80vh;
+    }
+    
+    .chat-history {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        padding-bottom: 20px;
+        display: flex;
+        flex-direction: column-reverse;
+    }
+    
+    .chat-history-content {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .fixed-input-area {
         position: sticky;
-        top: 0;
+        bottom: 0;
         background-color: white;
+        border-top: 2px solid #e9ecef;
+        padding: 20px;
         z-index: 100;
-        padding: 15px 0;
-        border-bottom: 2px solid #e9ecef;
-        margin-bottom: 20px;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
     }
     
-    .context-box {
+    .context-section {
         background-color: #f8f9fa;
         border: 2px solid #e9ecef;
         border-radius: 10px;
         padding: 15px;
-        margin: 10px 0;
+        margin-bottom: 15px;
     }
     
-    .question-input-box {
+    .question-section {
         background-color: #f8f9fa;
         border: 2px solid #e9ecef;
         border-radius: 10px;
         padding: 15px;
-        margin: 10px 0;
     }
     
     .question-container {
@@ -110,41 +130,58 @@ st.markdown("""
         margin-bottom: 15px;
     }
     
-    .scrollable-history {
-        max-height: 70vh;
-        overflow-y: auto;
-        padding-right: 10px;
-    }
-    
-    .history-header {
-        position: sticky;
-        top: 0;
-        background-color: white;
-        z-index: 50;
-        padding: 10px 0;
-        border-bottom: 1px solid #e9ecef;
-        margin-bottom: 15px;
-    }
-    
-    /* Custom scrollbar for better UX */
-    .scrollable-history::-webkit-scrollbar {
+    /* Custom scrollbar */
+    .chat-history::-webkit-scrollbar {
         width: 8px;
     }
     
-    .scrollable-history::-webkit-scrollbar-track {
+    .chat-history::-webkit-scrollbar-track {
         background: #f1f1f1;
         border-radius: 10px;
     }
     
-    .scrollable-history::-webkit-scrollbar-thumb {
+    .chat-history::-webkit-scrollbar-thumb {
         background: #888;
         border-radius: 10px;
     }
     
-    .scrollable-history::-webkit-scrollbar-thumb:hover {
+    .chat-history::-webkit-scrollbar-thumb:hover {
         background: #555;
     }
+    
+    .qa-pair {
+        margin-bottom: 20px;
+    }
+    
+    .section-title {
+        font-size: 1.2rem;
+        font-weight: bold;
+        margin-bottom: 10px;
+        color: #333;
+    }
+    
+    .empty-state {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: #666;
+        font-size: 1.1rem;
+        text-align: center;
+    }
 </style>
+
+<script>
+function scrollToBottom() {
+    const chatHistory = document.querySelector('.chat-history');
+    if (chatHistory) {
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+}
+
+// Auto-scroll to bottom after new messages
+setTimeout(scrollToBottom, 100);
+</script>
 """, unsafe_allow_html=True)
 
 # Initialize session state
@@ -229,24 +266,79 @@ def main():
         st.info("👈 Please load the AI model from the sidebar to get started!")
         return
     
-    # Fixed input container
-    st.markdown('<div class="fixed-input-container">', unsafe_allow_html=True)
+    # Create chat container
+    st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+    
+    # Chat history area (scrollable, shows newest at bottom)
+    st.markdown('<div class="chat-history">', unsafe_allow_html=True)
+    st.markdown('<div class="chat-history-content">', unsafe_allow_html=True)
+    
+    if st.session_state.qa_history:
+        # Show Q&A history (oldest first, newest at bottom)
+        for i, qa in enumerate(st.session_state.qa_history):
+            st.markdown('<div class="qa-pair">', unsafe_allow_html=True)
+            
+            # Question
+            st.markdown(f"""
+            <div class="question-container">
+                <strong>🙋 Question {i + 1}:</strong> {qa['question']}
+                <div style="font-size: 0.8rem; color: #666; margin-top: 5px;">
+                    ⏰ {qa['timestamp']}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Answer
+            confidence_class = get_confidence_class(qa['confidence'])
+            confidence_color = st.session_state.chatbot.get_confidence_color(qa['confidence'])
+            confidence_text = st.session_state.chatbot.get_confidence_text(qa['confidence'])
+            
+            st.markdown(f"""
+            <div class="answer-container {confidence_class}">
+                <strong>🤖 Answer:</strong> {qa['answer']}
+                <div style="margin-top: 10px;">
+                    <span style="font-size: 0.9rem; color: #666;">Confidence:</span>
+                    <span class="confidence-badge" style="background-color: {confidence_color};">
+                        {confidence_text} ({qa['confidence']:.1%})
+                    </span>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Warning for low confidence
+            if qa['confidence'] < 0.3:
+                st.warning("⚠️ Low confidence answer - the information might not be reliable or the answer might not be in the context.")
+            
+            st.markdown('</div>', unsafe_allow_html=True)
+    
+    else:
+        st.markdown("""
+        <div class="empty-state">
+            <div>
+                <h3>💬 No conversations yet</h3>
+                <p>Add your context and ask your first question below!</p>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)  # Close chat-history-content
+    st.markdown('</div>', unsafe_allow_html=True)  # Close chat-history
+    
+    # Fixed input area at bottom
+    st.markdown('<div class="fixed-input-area">', unsafe_allow_html=True)
     
     # Context input
-    st.markdown("### 📝 Context")
-    st.markdown("Enter or paste the text that contains the information you want to ask questions about:")
+    st.markdown('<div class="context-section">', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">📝 Context</div>', unsafe_allow_html=True)
     
-    with st.container():
-        st.markdown('<div class="context-box">', unsafe_allow_html=True)
-        context_input = st.text_area(
-            "Context",
-            value=st.session_state.context,
-            height=120,
-            placeholder="Paste your context here... (e.g., a paragraph, article, or document excerpt)",
-            help="This is the text that the AI will search through to find answers to your questions.",
-            label_visibility="collapsed"
-        )
-        st.markdown('</div>', unsafe_allow_html=True)
+    context_input = st.text_area(
+        "Context",
+        value=st.session_state.context,
+        height=100,
+        placeholder="Enter or paste the text that contains the information you want to ask questions about...",
+        help="This is the text that the AI will search through to find answers to your questions.",
+        label_visibility="collapsed"
+    )
     
     # Update context
     if context_input != st.session_state.context:
@@ -254,28 +346,29 @@ def main():
         if context_input:
             st.success(f"✅ Context updated! ({len(context_input)} characters)")
     
+    st.markdown('</div>', unsafe_allow_html=True)  # Close context-section
+    
     # Question input
-    st.markdown("### ❓ Ask a Question")
+    st.markdown('<div class="question-section">', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">❓ Ask a Question</div>', unsafe_allow_html=True)
     
-    with st.container():
-        st.markdown('<div class="question-input-box">', unsafe_allow_html=True)
-        col1, col2 = st.columns([4, 1])
-        
-        with col1:
-            question = st.text_input(
-                "Question",
-                placeholder="What would you like to know about the context?",
-                help="Ask any question about the information in your context above.",
-                label_visibility="collapsed",
-                key="question_input"
-            )
-        
-        with col2:
-            ask_button = st.button("🚀 Ask", type="primary", use_container_width=True)
-        
-        st.markdown('</div>', unsafe_allow_html=True)
+    col1, col2 = st.columns([4, 1])
     
-    st.markdown('</div>', unsafe_allow_html=True)  # Close fixed container
+    with col1:
+        question = st.text_input(
+            "Question",
+            placeholder="What would you like to know about the context?",
+            help="Ask any question about the information in your context above.",
+            label_visibility="collapsed",
+            key="question_input"
+        )
+    
+    with col2:
+        ask_button = st.button("🚀 Ask", type="primary", use_container_width=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)  # Close question-section
+    st.markdown('</div>', unsafe_allow_html=True)  # Close fixed-input-area
+    st.markdown('</div>', unsafe_allow_html=True)  # Close chat-container
     
     # Process question
     if ask_button or (question and st.session_state.get('enter_pressed', False)):
@@ -300,58 +393,8 @@ def main():
                 }
                 st.session_state.qa_history.append(qa_entry)
             
-            # Clear the question input by rerunning
+            # Clear the question input and rerun
             st.rerun()
-    
-    # Display QA history - oldest first (no reversal)
-    if st.session_state.qa_history:
-        st.markdown('<div class="history-header">', unsafe_allow_html=True)
-        st.markdown("### 💬 Question & Answer History")
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown('<div class="scrollable-history">', unsafe_allow_html=True)
-        
-        # Show oldest first (normal order)
-        for i, qa in enumerate(st.session_state.qa_history):
-            with st.container():
-                # Question
-                st.markdown(f"""
-                <div class="question-container">
-                    <strong>🙋 Question {i + 1}:</strong> {qa['question']}
-                    <div style="font-size: 0.8rem; color: #666; margin-top: 5px;">
-                        ⏰ {qa['timestamp']}
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                # Answer
-                confidence_class = get_confidence_class(qa['confidence'])
-                confidence_color = st.session_state.chatbot.get_confidence_color(qa['confidence'])
-                confidence_text = st.session_state.chatbot.get_confidence_text(qa['confidence'])
-                
-                st.markdown(f"""
-                <div class="answer-container {confidence_class}">
-                    <strong>🤖 Answer:</strong> {qa['answer']}
-                    <div style="margin-top: 10px;">
-                        <span style="font-size: 0.9rem; color: #666;">Confidence:</span>
-                        <span class="confidence-badge" style="background-color: {confidence_color};">
-                            {confidence_text} ({qa['confidence']:.1%})
-                        </span>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                # Warning for low confidence
-                if qa['confidence'] < 0.3:
-                    st.warning("⚠️ Low confidence answer - the information might not be reliable or the answer might not be in the context.")
-                
-                st.markdown("---")
-        
-        st.markdown('</div>', unsafe_allow_html=True)  # Close scrollable history
-    
-    else:
-        if st.session_state.context:
-            st.info("💡 Context is ready! Ask your first question above.")
     
     # Footer
     st.markdown("---")
