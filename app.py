@@ -11,7 +11,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for better styling
+# Custom CSS for better styling and fixed input
 st.markdown("""
 <style>
     .main-header {
@@ -19,31 +19,129 @@ st.markdown("""
         font-weight: bold;
         text-align: center;
         color: #1f77b4;
-        margin-bottom: 2rem;
+        margin-bottom: 1rem;
     }
     
-    .context-box {
+    /* Fixed context panel at top */
+    .context-panel {
+        position: fixed;
+        top: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: calc(100vw - 340px);
+        max-width: 1200px;
         background-color: #f8f9fa;
         border: 2px solid #e9ecef;
         border-radius: 10px;
         padding: 15px;
-        margin: 10px 0;
+        z-index: 1000;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        transition: width 0.3s ease;
     }
     
+    .context-panel.sidebar-collapsed {
+        width: calc(100vw - 40px);
+    }
+    
+    .context-text {
+        max-height: 100px;
+        overflow-y: auto;
+        font-size: 0.9rem;
+        color: #333;
+        line-height: 1.4;
+    }
+    
+    .context-controls {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+    
+    .context-stats {
+        font-size: 0.8rem;
+        color: #666;
+    }
+    
+    /* Chat container with proper spacing */
+    .chat-container {
+        margin-top: 200px;
+        margin-bottom: 120px;
+        padding: 20px;
+    }
+    
+    /* Fixed input at bottom */
+    .input-container {
+        position: fixed;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: calc(100vw - 340px);
+        max-width: 1200px;
+        background-color: white;
+        border-top: 2px solid #e9ecef;
+        padding: 20px;
+        z-index: 1000;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        transition: width 0.3s ease;
+    }
+    
+    .input-container.sidebar-collapsed {
+        width: calc(100vw - 40px);
+    }
+    
+    .question-input-row {
+        display: flex;
+        gap: 10px;
+        align-items: flex-end;
+    }
+    
+    .question-input-row input {
+        flex: 1;
+        padding: 12px;
+        border: 2px solid #e9ecef;
+        border-radius: 25px;
+        font-size: 1rem;
+        outline: none;
+        transition: border-color 0.3s ease;
+    }
+    
+    .question-input-row input:focus {
+        border-color: #1f77b4;
+    }
+    
+    .question-input-row button {
+        padding: 12px 24px;
+        background-color: #1f77b4;
+        color: white;
+        border: none;
+        border-radius: 25px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
+    
+    .question-input-row button:hover {
+        background-color: #1565c0;
+    }
+    
+    /* Chat messages */
     .question-container {
         background-color: #e3f2fd;
         border-left: 4px solid #2196f3;
-        padding: 10px 15px;
-        margin: 10px 0;
-        border-radius: 5px;
+        padding: 15px 20px;
+        margin: 15px 0;
+        border-radius: 10px;
+        margin-left: 20%;
     }
     
     .answer-container {
         background-color: #f1f8e9;
         border-left: 4px solid #4caf50;
-        padding: 10px 15px;
-        margin: 10px 0;
-        border-radius: 5px;
+        padding: 15px 20px;
+        margin: 15px 0;
+        border-radius: 10px;
+        margin-right: 20%;
     }
     
     .low-confidence {
@@ -63,26 +161,19 @@ st.markdown("""
     
     .confidence-badge {
         display: inline-block;
-        padding: 4px 8px;
-        border-radius: 12px;
+        padding: 4px 12px;
+        border-radius: 15px;
         font-size: 0.8rem;
         font-weight: bold;
         color: white;
         margin-left: 10px;
     }
     
-    .stats-container {
-        background-color: #f8f9fa;
-        border-radius: 10px;
-        padding: 15px;
-        margin: 10px 0;
-        text-align: center;
-    }
-    
-    .stButton > button {
-        width: 100%;
-        border-radius: 10px;
-        font-weight: bold;
+    .message-time {
+        font-size: 0.8rem;
+        color: #666;
+        margin-top: 8px;
+        text-align: right;
     }
     
     .sidebar-content {
@@ -91,16 +182,26 @@ st.markdown("""
         border-radius: 10px;
         margin-bottom: 15px;
     }
-    /* Fix the input box to the bottom */
-    .fixed-input-box {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        width: calc(100% - 300px); /* adjust automatically with sidebar */
-        padding: 10px 20px;
-        background: white;
-        z-index: 100;
-        box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+    
+    /* Hide default streamlit elements that interfere */
+    .stTextInput > div > div > input {
+        border: none !important;
+        background: transparent !important;
+        padding: 0 !important;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .context-panel, .input-container {
+            width: calc(100vw - 20px);
+            left: 10px;
+            transform: none;
+        }
+        
+        .question-container, .answer-container {
+            margin-left: 5%;
+            margin-right: 5%;
+        }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -114,6 +215,10 @@ if 'qa_history' not in st.session_state:
     st.session_state.qa_history = []
 if 'model_loaded' not in st.session_state:
     st.session_state.model_loaded = False
+if 'context_visible' not in st.session_state:
+    st.session_state.context_visible = True
+if 'editing_context' not in st.session_state:
+    st.session_state.editing_context = False
 
 def load_model():
     """Load the QA model with progress indicator."""
@@ -141,6 +246,14 @@ def get_confidence_class(confidence):
     else:
         return "low-confidence"
 
+def toggle_context_visibility():
+    """Toggle context panel visibility."""
+    st.session_state.context_visible = not st.session_state.context_visible
+
+def toggle_context_editing():
+    """Toggle context editing mode."""
+    st.session_state.editing_context = not st.session_state.editing_context
+
 def main():
     # Header
     st.markdown('<h1 class="main-header">🤖 AI Question Answering Chatbot</h1>', unsafe_allow_html=True)
@@ -151,10 +264,10 @@ def main():
         st.markdown("### 📋 Instructions")
         st.markdown("""
         1. **Load the AI model** first (one-time setup)
-        2. **Enter your context** - the text containing information
-        3. **Ask questions** about the context
-        4. **View answers** with confidence scores
-        5. **Clear chat** to start fresh
+        2. **Set your context** using the panel at the top
+        3. **Ask questions** using the input at the bottom
+        4. **View conversation** flowing upward
+        5. **Manage context** with the controls provided
         """)
         st.markdown('</div>', unsafe_allow_html=True)
         
@@ -176,6 +289,16 @@ def main():
             if st.button("🔄 Load AI Model", type="primary"):
                 load_model()
         
+        # Context management
+        st.markdown("### 📝 Context Management")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("👁️ Toggle View", help="Show/hide context panel"):
+                toggle_context_visibility()
+        with col2:
+            if st.button("✏️ Edit", help="Edit context"):
+                toggle_context_editing()
+        
         # Statistics
         if st.session_state.qa_history:
             st.markdown("### 📊 Session Stats")
@@ -191,64 +314,195 @@ def main():
             if st.button("Clear Chat History", type="secondary"):
                 clear_chat()
 
-    # Main content
+    # Check if model is loaded
     if not st.session_state.model_loaded:
         st.info("👈 Please load the AI model from the sidebar to get started!")
         return
-    
-    # Context input
-    st.markdown("### 📝 Context")
-    st.markdown("Enter or paste the text that contains the information you want to ask questions about:")
-    
-    with st.sidebar:
-        st.markdown("### 📝 Context")
-        context_input = st.text_area(
-            "Context",
-            value=st.session_state.context,
-            height=200,
-            placeholder="Paste your context here...",
-            label_visibility="collapsed"
-        )
-        if context_input != st.session_state.context:
-            st.session_state.context = context_input
-            if context_input:
-                st.success(f"✅ Context updated! ({len(context_input)} characters)")
 
-    # Update context
-    if context_input != st.session_state.context:
-        st.session_state.context = context_input
-        if context_input:
-            st.success(f"✅ Context updated! ({len(context_input)} characters)")
+    # Fixed Context Panel at Top
+    if st.session_state.context_visible:
+        context_panel_html = f"""
+        <div class="context-panel" id="context-panel">
+            <div class="context-controls">
+                <strong>📄 Context</strong>
+                <div class="context-stats">
+                    {len(st.session_state.context)} characters
+                    {' • ' + str(len(st.session_state.context.split())) + ' words' if st.session_state.context else ''}
+                </div>
+            </div>
+        """
+        
+        if st.session_state.editing_context:
+            context_panel_html += f"""
+                <textarea id="context-textarea" style="width: 100%; height: 80px; border: 1px solid #ccc; border-radius: 5px; padding: 8px; font-family: inherit; resize: vertical;" 
+                          placeholder="Enter your context here...">{st.session_state.context}</textarea>
+                <div style="margin-top: 10px; text-align: right;">
+                    <button onclick="saveContext()" style="background: #4caf50; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; margin-right: 5px;">Save</button>
+                    <button onclick="cancelEdit()" style="background: #666; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">Cancel</button>
+                </div>
+            """
+        else:
+            context_display = st.session_state.context if st.session_state.context else "No context set. Click 'Edit' to add context."
+            context_panel_html += f"""
+                <div class="context-text">{context_display}</div>
+            """
+        
+        context_panel_html += """
+        </div>
+        
+        <script>
+        function saveContext() {
+            const textarea = document.getElementById('context-textarea');
+            if (textarea) {
+                window.parent.postMessage({
+                    type: 'streamlit:setComponentValue',
+                    key: 'context_update',
+                    value: textarea.value
+                }, '*');
+            }
+        }
+        
+        function cancelEdit() {
+            window.parent.postMessage({
+                type: 'streamlit:setComponentValue', 
+                key: 'cancel_edit',
+                value: true
+            }, '*');
+        }
+        
+        // Adjust panel width based on sidebar state
+        function adjustPanelWidth() {
+            const panel = document.getElementById('context-panel');
+            const sidebar = document.querySelector('.css-1d391kg');
+            
+            if (panel) {
+                if (sidebar && sidebar.style.transform === 'translateX(-100%)') {
+                    panel.classList.add('sidebar-collapsed');
+                } else {
+                    panel.classList.remove('sidebar-collapsed');
+                }
+            }
+        }
+        
+        // Check sidebar state periodically
+        setInterval(adjustPanelWidth, 100);
+        </script>
+        """
+        
+        st.markdown(context_panel_html, unsafe_allow_html=True)
 
-    st.markdown("<br><br><br><br><br>", unsafe_allow_html=True)
-
-    # Question input
-    st.markdown("### ❓ Ask a Question")
+    # Main chat container
+    st.markdown('<div class="chat-container">', unsafe_allow_html=True)
     
-    st.markdown('<div class="fixed-input-box">', unsafe_allow_html=True)
-
-    col1, col2 = st.columns([4, 1])
+    # Display QA history (most recent first - flowing upward)
+    if st.session_state.qa_history:
+        st.markdown("### 💬 Conversation")
+        
+        # Show latest messages first (reverse chronological order)
+        for i, qa in enumerate(reversed(st.session_state.qa_history)):
+            # Question
+            st.markdown(f"""
+            <div class="question-container">
+                <div><strong>🙋 You:</strong> {qa['question']}</div>
+                <div class="message-time">{qa['timestamp']}</div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Answer
+            confidence_class = get_confidence_class(qa['confidence'])
+            confidence_color = st.session_state.chatbot.get_confidence_color(qa['confidence'])
+            confidence_text = st.session_state.chatbot.get_confidence_text(qa['confidence'])
+            
+            st.markdown(f"""
+            <div class="answer-container {confidence_class}">
+                <div><strong>🤖 AI:</strong> {qa['answer']}</div>
+                <div style="margin-top: 10px;">
+                    <span style="font-size: 0.9rem; color: #666;">Confidence:</span>
+                    <span class="confidence-badge" style="background-color: {confidence_color};">
+                        {confidence_text} ({qa['confidence']:.1%})
+                    </span>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Warning for low confidence
+            if qa['confidence'] < 0.3:
+                st.warning("⚠️ Low confidence answer - the information might not be reliable.")
     
-    with col1:
-        question = st.text_input(
-            "Question",
-            placeholder="What would you like to know about the context?",
-            key="input_question",
-            label_visibility="collapsed"
-        )
-    
-    with col2:
-        ask_button = st.button("🚀 Ask", type="primary", use_container_width=True)
+    else:
+        if st.session_state.context:
+            st.markdown("### 💬 Conversation")
+            st.info("💡 Context is ready! Ask your first question using the input box below.")
+        else:
+            st.info("📝 Please set your context using the panel above, then ask questions below.")
     
     st.markdown('</div>', unsafe_allow_html=True)
-
+    
+    # Handle context updates from JavaScript
+    context_update = st.query_params.get('context_update')
+    if context_update:
+        st.session_state.context = context_update
+        st.session_state.editing_context = False
+        st.rerun()
+    
+    cancel_edit = st.query_params.get('cancel_edit')
+    if cancel_edit:
+        st.session_state.editing_context = False
+        st.rerun()
+    
+    # Fixed input container at bottom
+    input_container_html = """
+    <div class="input-container" id="input-container">
+        <div style="margin-bottom: 10px; font-size: 0.9rem; color: #666; text-align: center;">
+            Ask a question about your context
+        </div>
+    </div>
+    
+    <script>
+    // Adjust input width based on sidebar state
+    function adjustInputWidth() {
+        const container = document.getElementById('input-container');
+        const sidebar = document.querySelector('.css-1d391kg');
+        
+        if (container) {
+            if (sidebar && sidebar.style.transform === 'translateX(-100%)') {
+                container.classList.add('sidebar-collapsed');
+            } else {
+                container.classList.remove('sidebar-collapsed');
+            }
+        }
+    }
+    
+    // Check sidebar state periodically
+    setInterval(adjustInputWidth, 100);
+    </script>
+    """
+    
+    st.markdown(input_container_html, unsafe_allow_html=True)
+    
+    # Create a container for the input that will be positioned at the bottom
+    with st.container():
+        # Add some space at the bottom for the fixed input
+        st.markdown('<div style="height: 120px;"></div>', unsafe_allow_html=True)
+        
+        # Question input (this will be styled to appear fixed at bottom via CSS)
+        col1, col2 = st.columns([5, 1])
+        
+        with col1:
+            question = st.text_input(
+                "question_input",
+                placeholder="Type your question here...",
+                label_visibility="collapsed",
+                key="question_input"
+            )
+        
+        with col2:
+            ask_button = st.button("🚀 Ask", type="primary", use_container_width=True)
     
     # Process question
-    if ask_button or (question and st.session_state.get('enter_pressed', False)):
+    if ask_button and question.strip():
         if not st.session_state.context.strip():
-            st.error("⚠️ Please provide a context first!")
-        elif not question.strip():
-            st.error("⚠️ Please enter a question!")
+            st.error("⚠️ Please set a context first!")
         else:
             with st.spinner("🤔 Thinking..."):
                 result = st.session_state.chatbot.answer_question(
@@ -266,63 +520,23 @@ def main():
                 }
                 st.session_state.qa_history.append(qa_entry)
             
-            # Clear the question input by rerunning
+            # Clear the question input and refresh
             st.rerun()
     
-    # Display current context info
-    if st.session_state.context:
-        st.markdown("### 📄 Current Context Preview")
-        with st.expander("Click to view/hide context", expanded=False):
-            st.markdown(f'<div class="context-box">{st.session_state.context}</div>', unsafe_allow_html=True)
-    
-    # Display QA history
+    # Auto-scroll to bottom when new message is added
     if st.session_state.qa_history:
-        st.markdown("### 💬 Question & Answer History")
-        
-        # Reverse to show latest first
-        for i, qa in enumerate(reversed(st.session_state.qa_history)):
-            with st.container():
-                # Question
-                st.markdown(f"""
-                <div class="question-container">
-                    <strong>🙋 Question {len(st.session_state.qa_history) - i}:</strong> {qa['question']}
-                    <div style="font-size: 0.8rem; color: #666; margin-top: 5px;">
-                        ⏰ {qa['timestamp']}
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                # Answer
-                confidence_class = get_confidence_class(qa['confidence'])
-                confidence_color = st.session_state.chatbot.get_confidence_color(qa['confidence'])
-                confidence_text = st.session_state.chatbot.get_confidence_text(qa['confidence'])
-                
-                st.markdown(f"""
-                <div class="answer-container {confidence_class}">
-                    <strong>🤖 Answer:</strong> {qa['answer']}
-                    <div style="margin-top: 10px;">
-                        <span style="font-size: 0.9rem; color: #666;">Confidence:</span>
-                        <span class="confidence-badge" style="background-color: {confidence_color};">
-                            {confidence_text} ({qa['confidence']:.1%})
-                        </span>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                # Warning for low confidence
-                if qa['confidence'] < 0.3:
-                    st.warning("⚠️ Low confidence answer - the information might not be reliable or the answer might not be in the context.")
-                
-                st.markdown("---")
-    
-    else:
-        if st.session_state.context:
-            st.info("💡 Context is ready! Ask your first question above.")
-    
+        st.markdown("""
+        <script>
+        setTimeout(function() {
+            window.scrollTo(0, document.body.scrollHeight);
+        }, 100);
+        </script>
+        """, unsafe_allow_html=True)
+
     # Footer
     st.markdown("---")
     st.markdown("""
-    <div style="text-align: center; color: #666; font-size: 0.9rem;">
+    <div style="text-align: center; color: #666; font-size: 0.9rem; margin-bottom: 140px;">
         Built with ❤️ using Streamlit and Hugging Face Transformers
     </div>
     """, unsafe_allow_html=True)
