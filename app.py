@@ -5,7 +5,7 @@ from datetime import datetime
 
 # Page configuration
 st.set_page_config(
-    page_title="Context Q&A Chatbot",
+    page_title="AI Question Answering Chatbot",
     page_icon="🤖",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -132,7 +132,7 @@ def get_confidence_class(confidence):
 
 def main():
     # Header
-    st.markdown('<h1 class="main-header">🤖 AI Question Answering Chatbot</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-header">🤖 Context Q&A Chatbot</h1>', unsafe_allow_html=True)
     
     # Sidebar
     with st.sidebar:
