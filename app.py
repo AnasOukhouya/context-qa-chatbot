@@ -121,8 +121,8 @@ if 'context' not in st.session_state:
     st.session_state.context = ""
 if 'qa_history' not in st.session_state:
     st.session_state.qa_history = []
-if 'question_input' not in st.session_state:
-    st.session_state.question_input = ""
+if 'clear_input' not in st.session_state:
+    st.session_state.clear_input = False
 
 def clear_chat():
     """Clear the chat history."""
@@ -168,8 +168,8 @@ def handle_question_submit():
         }
         st.session_state.qa_history.append(qa_entry)
         
-        # Clear input
-        st.session_state.question_input_widget = ""
+        # Mark that we need to clear input
+        st.session_state.clear_input = True
 
 def main():
     # Header
@@ -287,27 +287,31 @@ def main():
     col1, col2 = st.columns([5, 1])
     
     with col1:
+        # Use the clear_input flag to reset the input
+        input_value = "" if st.session_state.get('clear_input', False) else None
         question = st.text_input(
             "Ask a question:",
             placeholder="What would you like to know about the context?",
             key="question_input_widget",
-            on_change=None,
+            value=input_value,
             label_visibility="collapsed"
         )
+        
+        # Reset the clear flag after creating the input
+        if st.session_state.get('clear_input', False):
+            st.session_state.clear_input = False
     
     with col2:
         ask_button = st.button("🚀 Ask", type="primary", use_container_width=True)
     
     # Handle Enter key press or button click
-    if ask_button or (question and question != st.session_state.get('last_question', '')):
+    if ask_button and question:
         if not st.session_state.context.strip():
             st.error("⚠️ Please provide a context first!")
         elif not question.strip():
             st.error("⚠️ Please enter a question!")
         else:
-            st.session_state.last_question = question
             handle_question_submit()
-            time.sleep(0.1)  # Small delay for smooth UX
             st.rerun()
     
     # JavaScript for Enter key handling
