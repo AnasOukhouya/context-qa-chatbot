@@ -195,21 +195,22 @@ def main():
         if context_input:
             st.success(f"✅ Context updated! ({len(context_input)} characters)")
     
-    # Question input
+    # Question input with form
     st.markdown("### Ask a Question")
     
-    col1, col2 = st.columns([4, 1])
+    with st.form("question_form"):
+        col1, col2 = st.columns([4, 1])
     
-    with col1:
-        question = st.text_input(
-            "Question",
-            placeholder="What would you like to know about the context?",
-            help="Ask any question about the information in your context above.",
-            label_visibility="collapsed"
-        )
+        with col1:
+            question = st.text_input(
+                "Question",
+                placeholder="What would you like to know about the context?",
+                help="Ask any question about the information in your context above.",
+                label_visibility="collapsed"
+            )
     
-    with col2:
-        ask_button = st.button("Ask", type="primary", use_container_width=True)
+        with col2:
+            ask_button = st.form_submit_button("Ask", type="primary", use_container_width=True)
     
     # Process question
     if ask_button or (question and st.session_state.get('enter_pressed', False)):
@@ -285,7 +286,7 @@ def main():
     st.markdown("---")
     st.markdown("""
     <div style="text-align: center; color: #666; font-size: 0.9rem;">
-        Built with ❤️ using Streamlit and Hugging Face Transformers
+        ⭐️
     </div>
     """, unsafe_allow_html=True)
 
