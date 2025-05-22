@@ -16,9 +16,10 @@ def load_qa_model(model_name="distilbert-base-cased-distilled-squad"):
         tuple: (tokenizer, model)
     """
     try:
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
-        model = AutoModelForQuestionAnswering.from_pretrained(model_name)
-        model.eval()
+        with st.spinner("🤖 Loading AI model... Please wait a moment."):
+            tokenizer = AutoTokenizer.from_pretrained(model_name)
+            model = AutoModelForQuestionAnswering.from_pretrained(model_name)
+            model.eval()
         return tokenizer, model
     except Exception as e:
         st.error(f"Error loading model: {str(e)}")
