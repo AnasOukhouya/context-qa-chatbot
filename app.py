@@ -91,6 +91,17 @@ st.markdown("""
         border-radius: 10px;
         margin-bottom: 15px;
     }
+    /* Fix the input box to the bottom */
+    .fixed-input-box {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: calc(100% - 300px); /* adjust automatically with sidebar */
+        padding: 10px 20px;
+        background: white;
+        z-index: 100;
+        box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -189,36 +200,48 @@ def main():
     st.markdown("### 📝 Context")
     st.markdown("Enter or paste the text that contains the information you want to ask questions about:")
     
-    context_input = st.text_area(
-        "Context",
-        value=st.session_state.context,
-        height=150,
-        placeholder="Paste your context here... (e.g., a paragraph, article, or document excerpt)",
-        help="This is the text that the AI will search through to find answers to your questions.",
-        label_visibility="collapsed"
-    )
-    
+    with st.sidebar:
+        st.markdown("### 📝 Context")
+        context_input = st.text_area(
+            "Context",
+            value=st.session_state.context,
+            height=200,
+            placeholder="Paste your context here...",
+            label_visibility="collapsed"
+        )
+        if context_input != st.session_state.context:
+            st.session_state.context = context_input
+            if context_input:
+                st.success(f"✅ Context updated! ({len(context_input)} characters)")
+
     # Update context
     if context_input != st.session_state.context:
         st.session_state.context = context_input
         if context_input:
             st.success(f"✅ Context updated! ({len(context_input)} characters)")
-    
+
+    st.markdown("<br><br><br><br><br>", unsafe_allow_html=True)
+
     # Question input
     st.markdown("### ❓ Ask a Question")
     
+    st.markdown('<div class="fixed-input-box">', unsafe_allow_html=True)
+
     col1, col2 = st.columns([4, 1])
     
     with col1:
         question = st.text_input(
             "Question",
             placeholder="What would you like to know about the context?",
-            help="Ask any question about the information in your context above.",
+            key="input_question",
             label_visibility="collapsed"
         )
     
     with col2:
         ask_button = st.button("🚀 Ask", type="primary", use_container_width=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+
     
     # Process question
     if ask_button or (question and st.session_state.get('enter_pressed', False)):
