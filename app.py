@@ -5,7 +5,7 @@ from datetime import datetime
 
 # Page configuration
 st.set_page_config(
-    page_title="AI Question Answering Chatbot",
+    page_title="Context Q&A Chatbot",
     page_icon="🤖",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -137,7 +137,7 @@ def main():
     # Sidebar
     with st.sidebar:
         st.markdown('<div class="sidebar-content">', unsafe_allow_html=True)
-        st.markdown("### 📋 Instructions")
+        st.markdown("### Instructions")
         st.markdown("""
         1. **Load the AI model** first (one-time setup)
         2. **Enter your context** - the text containing information
@@ -149,7 +149,7 @@ def main():
         st.markdown('</div>', unsafe_allow_html=True)
         
         # Model loading
-        st.markdown("### 🚀 Model Status")
+        st.markdown("### Model Status")
         if st.session_state.model_loaded:
             st.success("✅ Model Ready!")
         else:
@@ -158,7 +158,7 @@ def main():
         
         # Statistics
         if st.session_state.qa_history:
-            st.markdown("### 📊 Session Stats")
+            st.markdown("### Session Stats")
             total_questions = len(st.session_state.qa_history)
             avg_confidence = sum(qa['confidence'] for qa in st.session_state.qa_history) / total_questions
             
@@ -177,7 +177,7 @@ def main():
         return
     
     # Context input
-    st.markdown("### 📝 Context")
+    st.markdown("### Context")
     st.markdown("Enter or paste the text that contains the information you want to ask questions about:")
     
     context_input = st.text_area(
@@ -196,7 +196,7 @@ def main():
             st.success(f"✅ Context updated! ({len(context_input)} characters)")
     
     # Question input
-    st.markdown("### ❓ Ask a Question")
+    st.markdown("### Ask a Question")
     
     col1, col2 = st.columns([4, 1])
     
@@ -209,7 +209,7 @@ def main():
         )
     
     with col2:
-        ask_button = st.button("🚀 Ask", type="primary", use_container_width=True)
+        ask_button = st.button("Ask", type="primary", use_container_width=True)
     
     # Process question
     if ask_button or (question and st.session_state.get('enter_pressed', False)):
@@ -218,7 +218,7 @@ def main():
         elif not question.strip():
             st.error("⚠️ Please enter a question!")
         else:
-            with st.spinner("🤔 Thinking..."):
+            with st.spinner("Thinking..."):
                 result = st.session_state.chatbot.answer_question(
                     st.session_state.context, 
                     question
@@ -247,7 +247,7 @@ def main():
                 # Question
                 st.markdown(f"""
                 <div class="question-container">
-                    <strong>🙋 Question {len(st.session_state.qa_history) - i}:</strong> {qa['question']}
+                    <strong>Question {len(st.session_state.qa_history) - i}:</strong> {qa['question']}
                     <div style="font-size: 0.8rem; color: #666; margin-top: 5px;">
                         ⏰ {qa['timestamp']}
                     </div>
@@ -261,7 +261,7 @@ def main():
                 
                 st.markdown(f"""
                 <div class="answer-container {confidence_class}">
-                    <strong>🤖 Answer:</strong> {qa['answer']}
+                    <strong>Answer:</strong> {qa['answer']}
                     <div style="margin-top: 10px;">
                         <span style="font-size: 0.9rem; color: #666;">Confidence:</span>
                         <span class="confidence-badge" style="background-color: {confidence_color};">
@@ -279,7 +279,7 @@ def main():
     
     else:
         if st.session_state.context:
-            st.info("💡 Context is ready! Ask your first question above.")
+            st.info("Context is ready! Ask your first question above.")
     
     # Footer
     st.markdown("---")
