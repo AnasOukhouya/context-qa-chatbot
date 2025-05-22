@@ -8,10 +8,10 @@ st.set_page_config(
     page_title="AI Question Answering Chatbot",
     page_icon="🤖",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
 
-# Custom CSS for better styling and fixed input
+# Custom CSS for better styling
 st.markdown("""
 <style>
     .main-header {
@@ -19,77 +19,64 @@ st.markdown("""
         font-weight: bold;
         text-align: center;
         color: #1f77b4;
-        margin-bottom: 1rem;
+        margin-bottom: 2rem;
     }
     
-    .chat-container {
-        height: 400px;
-        overflow-y: auto;
-        padding: 20px;
+    .context-box {
         background-color: #f8f9fa;
+        border: 2px solid #e9ecef;
         border-radius: 10px;
-        margin-bottom: 20px;
-        border: 1px solid #e9ecef;
-    }
-    
-    .question-bubble {
-        background-color: #007bff;
-        color: white;
-        padding: 12px 16px;
-        border-radius: 18px 18px 4px 18px;
-        margin: 10px 0 5px auto;
-        max-width: 80%;
-        word-wrap: break-word;
-        text-align: right;
-        margin-left: 20%;
-    }
-    
-    .answer-bubble {
-        background-color: #e9ecef;
-        color: #333;
-        padding: 12px 16px;
-        border-radius: 18px 18px 18px 4px;
-        margin: 5px auto 10px 0;
-        max-width: 80%;
-        word-wrap: break-word;
-        margin-right: 20%;
-    }
-    
-    .confidence-info {
-        font-size: 0.8rem;
-        color: #666;
-        margin-top: 5px;
-        font-style: italic;
-    }
-    
-    .high-confidence { color: #28a745; }
-    .medium-confidence { color: #ffc107; }
-    .low-confidence { color: #dc3545; }
-    
-    .timestamp {
-        font-size: 0.7rem;
-        color: #999;
-        text-align: center;
-        margin: 15px 0 5px 0;
-    }
-    
-    .fixed-bottom {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background-color: white;
-        padding: 20px;
-        border-top: 2px solid #e9ecef;
-        z-index: 1000;
-    }
-    
-    .context-section {
-        background-color: #f8f9fa;
         padding: 15px;
+        margin: 10px 0;
+    }
+    
+    .question-container {
+        background-color: #e3f2fd;
+        border-left: 4px solid #2196f3;
+        padding: 10px 15px;
+        margin: 10px 0;
+        border-radius: 5px;
+    }
+    
+    .answer-container {
+        background-color: #f1f8e9;
+        border-left: 4px solid #4caf50;
+        padding: 10px 15px;
+        margin: 10px 0;
+        border-radius: 5px;
+    }
+    
+    .low-confidence {
+        background-color: #ffebee;
+        border-left: 4px solid #f44336;
+    }
+    
+    .medium-confidence {
+        background-color: #fff8e1;
+        border-left: 4px solid #ff9800;
+    }
+    
+    .high-confidence {
+        background-color: #f1f8e9;
+        border-left: 4px solid #4caf50;
+    }
+    
+    .confidence-badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: bold;
+        color: white;
+        margin-left: 10px;
+    }
+    
+    .stats-container {
+        background-color: #f8f9fa;
         border-radius: 10px;
-        margin-bottom: 20px;
-        border: 1px solid #e9ecef;
+        padding: 15px;
+        margin: 10px 0;
+        text-align: center;
     }
     
     .stButton > button {
@@ -98,31 +85,34 @@ st.markdown("""
         font-weight: bold;
     }
     
-    .main-content {
-        padding-bottom: 150px;
-    }
-    
-    /* Hide streamlit footer and header */
-    .stApp > footer {display: none;}
-    .stApp > header {display: none;}
-    
-    /* Adjust main container */
-    .main .block-container {
-        padding-top: 2rem;
-        max-width: 100%;
+    .sidebar-content {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 15px;
     }
 </style>
 """, unsafe_allow_html=True)
 
 # Initialize session state
 if 'chatbot' not in st.session_state:
-    st.session_state.chatbot = QAChatbot()  # Load model immediately
+    st.session_state.chatbot = None
 if 'context' not in st.session_state:
     st.session_state.context = ""
 if 'qa_history' not in st.session_state:
     st.session_state.qa_history = []
-if 'clear_input' not in st.session_state:
-    st.session_state.clear_input = False
+if 'model_loaded' not in st.session_state:
+    st.session_state.model_loaded = False
+
+def load_model():
+    """Load the QA model with progress indicator."""
+    if not st.session_state.model_loaded:
+        with st.spinner("🤖 Loading AI model... This may take a moment on first run."):
+            st.session_state.chatbot = QAChatbot()
+            st.session_state.model_loaded = True
+        st.success("✅ Model loaded successfully!")
+        time.sleep(1)
+        st.rerun()
 
 def clear_chat():
     """Clear the chat history."""
@@ -140,67 +130,40 @@ def get_confidence_class(confidence):
     else:
         return "low-confidence"
 
-def get_confidence_text(confidence):
-    """Get confidence level text."""
-    if confidence >= 0.7:
-        return "High Confidence"
-    elif confidence >= 0.4:
-        return "Medium Confidence"
-    else:
-        return "Low Confidence"
-
-def handle_question_submit():
-    """Handle question submission."""
-    question = st.session_state.question_input_widget
-    if question and st.session_state.context.strip():
-        result = st.session_state.chatbot.answer_question(
-            st.session_state.context, 
-            question
-        )
-        
-        # Add to history
-        qa_entry = {
-            'question': question,
-            'answer': result['answer'],
-            'confidence': result['confidence'],
-            'timestamp': datetime.now().strftime("%H:%M:%S"),
-            'error': result.get('error', False)
-        }
-        st.session_state.qa_history.append(qa_entry)
-        
-        # Mark that we need to clear input
-        st.session_state.clear_input = True
-
 def main():
     # Header
     st.markdown('<h1 class="main-header">🤖 AI Question Answering Chatbot</h1>', unsafe_allow_html=True)
     
-    # Main content container
-    st.markdown('<div class="main-content">', unsafe_allow_html=True)
-    
-    # Context input section
-    st.markdown("### 📝 Context")
-    context_input = st.text_area(
-        "Enter or paste your context here:",
-        value=st.session_state.context,
-        height=120,
-        placeholder="Paste your context here... (e.g., a paragraph, article, or document excerpt)",
-        key="context_input"
-    )
-    
-    # Update context
-    if context_input != st.session_state.context:
-        st.session_state.context = context_input
-    
-    # Sidebar for controls
+    # Sidebar
     with st.sidebar:
+        st.markdown('<div class="sidebar-content">', unsafe_allow_html=True)
         st.markdown("### 📋 Instructions")
         st.markdown("""
-        1. **Enter your context** - the text containing information
-        2. **Ask questions** about the context
-        3. **Press Enter** or click Ask to submit
-        4. **Clear chat** to start fresh conversation
+        1. **Load the AI model** first (one-time setup)
+        2. **Enter your context** - the text containing information
+        3. **Ask questions** about the context
+        4. **View answers** with confidence scores
+        5. **Clear chat** to start fresh
         """)
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        st.markdown('<div class="sidebar-content">', unsafe_allow_html=True)
+        st.markdown("### 🎯 Model Information")
+        st.markdown("""
+        **Model:** DistilBERT-SQuAD  
+        **Type:** Extractive QA  
+        **Language:** English  
+        **Context Limit:** 512 tokens
+        """)
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        # Model loading
+        st.markdown("### 🚀 Model Status")
+        if st.session_state.model_loaded:
+            st.success("✅ Model Ready!")
+        else:
+            if st.button("🔄 Load AI Model", type="primary"):
+                load_model()
         
         # Statistics
         if st.session_state.qa_history:
@@ -216,122 +179,129 @@ def main():
             st.markdown("### 🗑️ Chat Management")
             if st.button("Clear Chat History", type="secondary"):
                 clear_chat()
+
+    # Main content
+    if not st.session_state.model_loaded:
+        st.info("👈 Please load the AI model from the sidebar to get started!")
+        return
     
-    # Chat conversation display
-    if st.session_state.qa_history:
-        st.markdown("### 💬 Conversation")
-        
-        # Create scrollable chat container
-        chat_html = '<div class="chat-container">'
-        
-        for qa in st.session_state.qa_history:
-            # Timestamp
-            chat_html += f'<div class="timestamp">{qa["timestamp"]}</div>'
-            
-            # Question bubble
-            chat_html += f'<div class="question-bubble">🙋 {qa["question"]}</div>'
-            
-            # Answer bubble with confidence
-            confidence_class = get_confidence_class(qa['confidence'])
-            confidence_text = get_confidence_text(qa['confidence'])
-            
-            chat_html += f'''
-            <div class="answer-bubble">
-                🤖 {qa["answer"]}
-                <div class="confidence-info {confidence_class}">
-                    {confidence_text} ({qa["confidence"]:.1%})
-                </div>
-            </div>
-            '''
-        
-        chat_html += '</div>'
-        st.markdown(chat_html, unsafe_allow_html=True)
-        
-        # Auto-scroll to bottom using JavaScript
-        st.markdown("""
-        <script>
-        var chatContainer = document.querySelector('.chat-container');
-        if (chatContainer) {
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-        }
-        </script>
-        """, unsafe_allow_html=True)
+    # Context input
+    st.markdown("### 📝 Context")
+    st.markdown("Enter or paste the text that contains the information you want to ask questions about:")
     
-    else:
-        if st.session_state.context:
-            st.info("💡 Context is ready! Ask your first question below.")
-        else:
-            st.info("📝 Please enter a context above, then ask questions about it.")
+    context_input = st.text_area(
+        "Context",
+        value=st.session_state.context,
+        height=150,
+        placeholder="Paste your context here... (e.g., a paragraph, article, or document excerpt)",
+        help="This is the text that the AI will search through to find answers to your questions.",
+        label_visibility="collapsed"
+    )
     
-    st.markdown('</div>', unsafe_allow_html=True)
+    # Update context
+    if context_input != st.session_state.context:
+        st.session_state.context = context_input
+        if context_input:
+            st.success(f"✅ Context updated! ({len(context_input)} characters)")
     
-    # Fixed bottom input section
-    st.markdown("""
-    <style>
-    .element-container:has(> .stTextInput) {
-        position: fixed;
-        bottom: 20px;
-        left: 20px;
-        right: 20px;
-        background-color: white;
-        padding: 20px;
-        border-top: 2px solid #e9ecef;
-        border-radius: 10px;
-        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-        z-index: 1000;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+    # Question input
+    st.markdown("### ❓ Ask a Question")
     
-    # Question input at bottom
-    col1, col2 = st.columns([5, 1])
+    col1, col2 = st.columns([4, 1])
     
     with col1:
-        # Use the clear_input flag to reset the input
-        input_value = "" if st.session_state.get('clear_input', False) else None
         question = st.text_input(
-            "Ask a question:",
+            "Question",
             placeholder="What would you like to know about the context?",
-            key="question_input_widget",
-            value=input_value,
+            help="Ask any question about the information in your context above.",
             label_visibility="collapsed"
         )
-        
-        # Reset the clear flag after creating the input
-        if st.session_state.get('clear_input', False):
-            st.session_state.clear_input = False
     
     with col2:
         ask_button = st.button("🚀 Ask", type="primary", use_container_width=True)
     
-    # Handle Enter key press or button click
-    if ask_button and question:
+    # Process question
+    if ask_button or (question and st.session_state.get('enter_pressed', False)):
         if not st.session_state.context.strip():
             st.error("⚠️ Please provide a context first!")
         elif not question.strip():
             st.error("⚠️ Please enter a question!")
         else:
-            handle_question_submit()
+            with st.spinner("🤔 Thinking..."):
+                result = st.session_state.chatbot.answer_question(
+                    st.session_state.context, 
+                    question
+                )
+                
+                # Add to history
+                qa_entry = {
+                    'question': question,
+                    'answer': result['answer'],
+                    'confidence': result['confidence'],
+                    'timestamp': datetime.now().strftime("%H:%M:%S"),
+                    'error': result.get('error', False)
+                }
+                st.session_state.qa_history.append(qa_entry)
+            
+            # Clear the question input by rerunning
             st.rerun()
     
-    # JavaScript for Enter key handling
+    # Display current context info
+    if st.session_state.context:
+        st.markdown("### 📄 Current Context Preview")
+        with st.expander("Click to view/hide context", expanded=False):
+            st.markdown(f'<div class="context-box">{st.session_state.context}</div>', unsafe_allow_html=True)
+    
+    # Display QA history
+    if st.session_state.qa_history:
+        st.markdown("### 💬 Question & Answer History")
+        
+        # Reverse to show latest first
+        for i, qa in enumerate(reversed(st.session_state.qa_history)):
+            with st.container():
+                # Question
+                st.markdown(f"""
+                <div class="question-container">
+                    <strong>🙋 Question {len(st.session_state.qa_history) - i}:</strong> {qa['question']}
+                    <div style="font-size: 0.8rem; color: #666; margin-top: 5px;">
+                        ⏰ {qa['timestamp']}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Answer
+                confidence_class = get_confidence_class(qa['confidence'])
+                confidence_color = st.session_state.chatbot.get_confidence_color(qa['confidence'])
+                confidence_text = st.session_state.chatbot.get_confidence_text(qa['confidence'])
+                
+                st.markdown(f"""
+                <div class="answer-container {confidence_class}">
+                    <strong>🤖 Answer:</strong> {qa['answer']}
+                    <div style="margin-top: 10px;">
+                        <span style="font-size: 0.9rem; color: #666;">Confidence:</span>
+                        <span class="confidence-badge" style="background-color: {confidence_color};">
+                            {confidence_text} ({qa['confidence']:.1%})
+                        </span>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Warning for low confidence
+                if qa['confidence'] < 0.3:
+                    st.warning("⚠️ Low confidence answer - the information might not be reliable or the answer might not be in the context.")
+                
+                st.markdown("---")
+    
+    else:
+        if st.session_state.context:
+            st.info("💡 Context is ready! Ask your first question above.")
+    
+    # Footer
+    st.markdown("---")
     st.markdown("""
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const questionInput = document.querySelector('input[aria-label="Ask a question:"]');
-        if (questionInput) {
-            questionInput.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    const askButton = document.querySelector('button[kind="primary"]');
-                    if (askButton) {
-                        askButton.click();
-                    }
-                }
-            });
-        }
-    });
-    </script>
+    <div style="text-align: center; color: #666; font-size: 0.9rem;">
+        Built with ❤️ using Streamlit and Hugging Face Transformers
+    </div>
     """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
