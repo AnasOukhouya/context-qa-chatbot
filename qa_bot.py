@@ -56,15 +56,15 @@ class QAChatbot:
         
         try:
             # Tokenize the input
-            inputs = self.tokenizer.encode_plus(
-                question,
-                context,
-                add_special_tokens=True,
-                return_tensors="pt",
-                max_length=512,
-                truncation=True,
-                padding=True
-            )
+            inputs = self.tokenizer(
+                        question,
+                        context,
+                        add_special_tokens=True,
+                        return_tensors="pt",
+                        max_length=512,
+                        truncation=True,
+                        padding=True
+                    )
             
             # Get model predictions
             with torch.no_grad():
